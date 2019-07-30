@@ -68,7 +68,6 @@ contract CandidateContract {
     string public CandidateName;
     address public coinbaseAddr;
 
-    // TODO: will update = 900 block
     uint256 constant public BLOCK_PER_EPOCH = 900;
     uint256 constant public PENDING_STATUS = 1;
     uint256 constant public PROPOSED_STATUS = 10;
