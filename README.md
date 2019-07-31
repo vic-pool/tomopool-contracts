@@ -76,5 +76,6 @@ masternode owner and who are stakers.
 if 66\% of the stake of the pool approves for Resign.
 * TomoPool is decentralized and no one is controlling the funds.
 
-  
+### Contact Us
+Join our telegram group: [https://t.me/tomopool](https://t.me/tomopool)
  
