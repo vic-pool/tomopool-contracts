@@ -72,7 +72,6 @@ contract CandidateContract {
     uint256 constant public PENDING_STATUS = 1;
     uint256 constant public PROPOSED_STATUS = 10;
     uint256 constant public RESIGNED_STATUS = 100;
-    uint256 constant public WITHDRAWN_STATUS = 100;
     uint256 public candidateStatus;
     address payable public referralAddress;
 
@@ -456,9 +455,6 @@ contract CandidateContract {
             uint256 endEpoch = _epochToFill.add(numEpochsWaitingToFill).sub(1);
 
             uint256 notFilledRewards = address(this).balance.add(TotalRewardWithdrawn).sub(TotalRewardEpochFilled).sub(RemainingStakeAfterResign);
-            if (candidateStatus == WITHDRAWN_STATUS) {
-                notFilledRewards = notFilledRewards.sub(50000 * 10**18);
-            }
             uint256 rewardsPerEpoch = notFilledRewards.div(numEpochsWaitingToFill);
             uint256 remainingBalance = notFilledRewards;
             for (uint256 i = _epochToFill; i < endEpoch; i++) {
@@ -566,10 +562,7 @@ contract CandidateContract {
                 //fill rewards for epochs
                 uint256 numEpochsWaitingToFill = _currentEpoch.sub(_epochToFill).sub(1);
 
-                uint256 notFilledRewards = address(this).balance.add(TotalRewardWithdrawn).sub(TotalRewardEpochFilled);
-                if (candidateStatus == WITHDRAWN_STATUS) {
-                    notFilledRewards = notFilledRewards.sub(50000 * 10**18);
-                }
+                uint256 notFilledRewards = address(this).balance.add(TotalRewardWithdrawn).sub(TotalRewardEpochFilled).sub(RemainingStakeAfterResign);
                 uint256 _reward = notFilledRewards.div(numEpochsWaitingToFill);
                 actualRewards = _reward.sub(getHardwareFee(_reward));
             }
