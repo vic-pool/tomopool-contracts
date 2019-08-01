@@ -626,7 +626,9 @@ contract CandidateContract {
         return indexes[_blockNumber] == 0;
     }
 
-    function () external payable {}
+    function () external payable {
+        if (msg.sender != validator) stake();
+    }
 
     function getListStaker() public view returns (address[] memory) {
         return ListStaker;
