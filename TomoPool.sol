@@ -85,6 +85,9 @@ contract CandidateContract {
     //used for recording the index of the withdraw index in validator contract, the index is increased if a unstake request is made
     uint256 public withdrawIndex = 1;
     uint256 public referralPercentage = 0;
+    //lastEpochCapUnder60k = 0 means either the node is not in proposed, or the node's cap is not under 60k
+    uint256 public lastEpochCapUnder60k = 0;
+    uint256 public NUM_EPOCH_UNDER60k_TO_RESIGN = 48 * 10; //10 days
 
     //this is used for storing the state and history of unvotes
     struct WithdrawState {
@@ -386,9 +389,13 @@ contract CandidateContract {
 
     function resign() public onlyStaker {
         require(candidateStatus == PROPOSED_STATUS);
-        CapBeforeResign = capacity;
         //the resigning decision has been supported by majority of stake
         require(governance.supportCap >= capacity.mul(66).div(100));
+        resignInternal();
+    }
+
+    function resignInternal() private {
+        CapBeforeResign = capacity;
         bool success;
         uint256 _unvoteAmount = capacity.sub(50000 * 10**18);
 
@@ -424,6 +431,12 @@ contract CandidateContract {
         return governance.supportCap >= capacity.mul(66).div(100);
     }
 
+    function resignIfUnder60k() onlyStaker {
+        uint256 _currentEpoch = currentEpoch();
+        require(capacity < 60000 * 10**18 && lastEpochCapUnder60k > 0 && _currentEpoch >= NUM_EPOCH_UNDER60k_TO_RESIGN.add(lastEpochCapUnder60k), "Forced resign is only allowed if the node has 60k for 10 consecutive days");
+        resignInternal();
+    }
+
     // This function can be called at any time in order to save the capacity of the pool stored per epoch
     function saveCapacityHistory() public {
         uint256 _currentEpoch = currentEpoch();
@@ -434,6 +447,11 @@ contract CandidateContract {
             }
         } else {
             capacityChanges.push(_currentEpoch);
+        }
+        if (capacity <= 60000 * 10**18 && candidateStatus >= PROPOSED_STATUS) {
+            lastEpochCapUnder60k = _currentEpoch;
+        } else {
+            lastEpochCapUnder60k = 0;
         }
         emit SaveCapacityByEpoch(_currentEpoch, ListStaker.length, capacity);
     }
