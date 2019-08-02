@@ -155,6 +155,7 @@ contract CandidateContract {
     event Resign(address _candidate);
     event Propose(address _candidate);
     event WithdrawAfterResign(address _staker, bool _isStakeLocked, uint256 _withdrawalCap);
+    event TransferStake(address _from, address _to, uint256 _amount);
 
     constructor (string memory _candidateName, address _coinbase, address _cm) public {
         CandidateName = _candidateName;
@@ -229,6 +230,47 @@ contract CandidateContract {
             }
         }
         emit Stake(msg.sender, msg.value);
+    }
+
+    function transferStake(address to, uint256 _amount) external onlyStaker {
+        require(_amount > 0);
+        require(candidateStatus < RESIGNED_STATUS);
+        uint256 currentSenderCap = getCurrentStakerCap(msg.sender);
+        require(currentSenderCap >= _amount, "transfered amount is higher than the current cap");
+        uint256 _ce = currentEpoch();
+        //decrease stake of sender
+        StakersCapacity[_ce][msg.sender] = currentSenderCap.sub(_amount);
+        //log the cap change
+        if (EpochsAtWhichCapChange[msg.sender][EpochsAtWhichCapChange[msg.sender].length - 1] != _ce) {
+            EpochsAtWhichCapChange[msg.sender].push(_ce);
+        }
+
+        //remove sender from list of staker if cap becomes 0
+        if (getCurrentStakerCap(msg.sender) == 0) {
+            for (uint256 i = 0; i < ListStaker.length; i++) {
+                if (ListStaker[i] == msg.sender) {
+                    ListStaker[i] = ListStaker[ListStaker.length - 1];
+                    ListStaker.pop();
+                    break;
+                }
+            }
+        }
+
+        //add "to" to the staker list if the current stake is 0
+        uint256 currentReceiverCap = getCurrentStakerCap(to);
+        if (currentReceiverCap == 0) ListStaker.push(to);
+        //change "to" cap
+        StakersCapacity[_ce][to] = currentReceiverCap.add(_amount);
+        //mark the last epoch at which cap of the staker is changed
+        if (EpochsAtWhichCapChange[to].length > 0) {
+            if (EpochsAtWhichCapChange[to][EpochsAtWhichCapChange[to].length - 1] != _ce) {
+                EpochsAtWhichCapChange[to].push(_ce);
+            }
+        } else {
+            EpochsAtWhichCapChange[to].push(_ce);
+        }
+
+        emit TransferStake(msg.sender, to, _amount);
     }
 
     function unstake(uint256 _amount) public {
