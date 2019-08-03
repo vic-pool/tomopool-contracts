@@ -563,6 +563,7 @@ contract CandidateContract {
             emit PaymentHardware(epochToPay, getHardwareFeePercentage(), _fee);
 
             uint256 _refBonus = getRefBonus(_reward);
+            referralAddress.transfer(_refBonus);
             paymentReferralHistory[epochToPay] = _refBonus;
             emit PaymentRef(epochToPay, getRefBonusPercentage(), _refBonus);
 
