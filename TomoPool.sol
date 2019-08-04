@@ -489,7 +489,7 @@ contract CandidateContract {
         } else {
             capacityChanges.push(_currentEpoch);
         }
-        if (capacity <= 60000 * 10**18 && candidateStatus >= PROPOSED_STATUS) {
+        if (capacity <= 60000 ether && candidateStatus >= PROPOSED_STATUS) {
             lastEpochCapUnder60k = _currentEpoch;
         } else {
             lastEpochCapUnder60k = 0;
