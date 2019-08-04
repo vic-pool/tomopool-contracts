@@ -624,7 +624,7 @@ contract CandidateContract {
 
                 uint256 notFilledRewards = address(this).balance.add(TotalRewardWithdrawn).sub(TotalRewardEpochFilled).sub(RemainingStakeAfterResign);
                 uint256 _reward = notFilledRewards.div(numEpochsWaitingToFill);
-                actualRewards = _reward.sub(getHardwareFee(_reward));
+                actualRewards = _reward.sub(getHardwareFee(_reward)).sub(getRefBonus(_reward));
             }
         }
         return (_stakerCapacity.mul(actualRewards).div(_candidateCapacity), _stakerCapacity);
