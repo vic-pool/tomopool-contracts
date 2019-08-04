@@ -269,6 +269,16 @@ contract CandidateContract {
             EpochsAtWhichCapChange[to].push(_ce);
         }
 
+        //transfer vote
+        if (governance.voteResults[msg.sender] != governance.voteResults[to]) {
+            if (governance.voteResults[to]) {
+                //increase supportCap
+                governance.supportCap = governance.supportCap.add(_amount);
+            } else {
+                governance.supportCap = governance.supportCap.sub(_amount);
+            }
+        }
+
         emit TransferStake(msg.sender, to, _amount);
     }
 
@@ -472,7 +482,7 @@ contract CandidateContract {
         return governance.supportCap >= capacity.mul(66).div(100);
     }
 
-    function resignIfUnder60k() public onlyOwner {
+    function resignIfUnder60k() public onlyTeam {
         uint256 _currentEpoch = currentEpoch();
         require(capacity < 60000 * 10**18 && lastEpochCapUnder60k > 0 && _currentEpoch >= NUM_EPOCH_UNDER60k_TO_RESIGN.add(lastEpochCapUnder60k), "Forced resign is only allowed if the node has 60k for 10 consecutive days");
         resignInternal();
