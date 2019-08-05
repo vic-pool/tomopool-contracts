@@ -12,6 +12,7 @@ contract CandidateManager is Ownable, ICandidateManager {
     uint256 constant public BLOCK_PER_EPOCH = 900;
 
     constructor () public {
+        team = msg.sender;
     }
 
     // only accept max node capacity => high reward for user
@@ -43,6 +44,7 @@ contract CandidateManager is Ownable, ICandidateManager {
             });
         candidates.push(address(_candidate));
         emit NewCandidate(address(_candidate), _candidateName, _coinbase);
+        _candidate.setTeam(team);
     }
 
     function changeTeamAddress(address payable _team) public onlyOwner {
@@ -73,6 +75,7 @@ contract CandidateContract {
     uint256 constant public RESIGNED_STATUS = 100;
     uint256 public candidateStatus;
     address payable public referralAddress;
+    address payable public teamAddr;
 
     uint256 public stakerWithdrawDelay = 96 * BLOCK_PER_EPOCH; //96 epochs = 2 days
     uint256 public candidateWithdrawDelay = 1440 * BLOCK_PER_EPOCH;//1440 epochs = 30 days
@@ -164,6 +167,7 @@ contract CandidateContract {
         lastEpochRewardFilled = 0;
         governance.epochStart = currentEpoch();
         governance.description = "Voting for resigning";
+        teamAddr = msg.sender;
     }
 
     function setWithdrawDelay(uint256 _stake, uint256 _candidate) external onlyTeam {
@@ -177,7 +181,7 @@ contract CandidateContract {
 
     //setHardwareFeePercentage as percentage of the reward
     function setHardwareFeePercentage(uint256 _hardwareFee) public onlyTeam {
-        require(_hardwareFee >= 10 && _hardwareFee <= 20); //max 0.5$ per epoch
+        require(_hardwareFee <= 20); //max 0.5$ per epoch
         hardwareFeePercentage = _hardwareFee;
     }
 
@@ -194,7 +198,17 @@ contract CandidateContract {
     }
 
     function teamAddress() public view returns (address payable) {
-        return ICandidateManager(cm).teamAddress();
+        return teamAddr;
+    }
+
+    address payable inProgressTeam;
+    function setTeam(address payable _team) public onlyTeam {
+        inProgressTeam = _team;
+    }
+
+    function confirmTeam() public {
+        require(inProgressTeam == msg.sender);
+        teamAddr = inProgressTeam;
     }
 
     modifier onlyTeam() {
@@ -203,10 +217,10 @@ contract CandidateContract {
     }
 
     function stake() public payable {
+        require(candidateStatus < RESIGNED_STATUS);
         //The first stake
         if (getCurrentStakerCap(msg.sender) == 0) ListStaker.push(msg.sender);
         uint256 _ce = currentEpoch();
-        require(candidateStatus < RESIGNED_STATUS);
         //change cap of staker coresponding to epoch
         StakersCapacity[_ce][msg.sender] = getCurrentStakerCap(msg.sender).add(msg.value);
         //mark the last epoch at which cap of the staker is changed
@@ -356,23 +370,6 @@ contract CandidateContract {
             delete indexes[_blockNumber];
             msg.sender.transfer(cap);
             emit Withdraw(msg.sender, _blockNumber, cap);
-        } else {
-            uint256 _ce = currentEpoch();
-            uint256 _amount = getCurrentStakerCap(msg.sender);
-            StakersCapacity[_ce][msg.sender] = getCurrentStakerCap(msg.sender).sub(_amount);
-            capacity = capacity.sub(_amount);
-            EpochsAtWhichCapChange[msg.sender].push(_ce);
-            saveCapacityHistory();
-
-            for (uint256 i = 0; i < ListStaker.length; i++) {
-                if (ListStaker[i] == msg.sender) {
-                    ListStaker[i] = ListStaker[ListStaker.length - 1];
-                    ListStaker.pop();
-                    break;
-                }
-            }
-            msg.sender.transfer(_amount);
-            emit Withdraw(msg.sender, _blockNumber, _amount);
         }
     }
 
@@ -393,13 +390,13 @@ contract CandidateContract {
         if (!withdrawsState[_staker].isWithdrawnStakeLocked && !withdrawsState[_staker].isWithdrawnCandidateLocked) {
             if (checkStakeLock) {
                 withdrawsState[_staker].isWithdrawnStakeLocked = true;
-                _stakerCap = CapBeforeResign.sub(50000 * 10**18).mul(_stakerCap).div(CapBeforeResign);
+                _stakerCap = CapBeforeResign.sub(50000 ether).mul(_stakerCap).div(CapBeforeResign);
             } else {
-                _stakerCap = _stakerCap.mul(50000 * 10**18).div(CapBeforeResign);
+                _stakerCap = _stakerCap.mul(50000 ether).div(CapBeforeResign);
                 withdrawsState[_staker].isWithdrawnCandidateLocked = true;
             }
         } else {
-            withdrawsState[_staker] .isWithdrawnStakeLocked = true;
+            withdrawsState[_staker].isWithdrawnStakeLocked = true;
             withdrawsState[_staker].isWithdrawnCandidateLocked = true;
         }
         uint256 _ce = currentEpoch();
@@ -448,7 +445,7 @@ contract CandidateContract {
     function resignInternal() private {
         CapBeforeResign = capacity;
         bool success;
-        uint256 _unvoteAmount = capacity.sub(50000 * 10**18);
+        uint256 _unvoteAmount = capacity.sub(50000 ether);
 
         (success,) = validator.call(abi.encodeWithSignature("unvote(address,uint256)", coinbaseAddr, _unvoteAmount));
         require(success, "resign failed");
@@ -484,7 +481,7 @@ contract CandidateContract {
 
     function resignIfUnder60k() public onlyTeam {
         uint256 _currentEpoch = currentEpoch();
-        require(capacity < 60000 * 10**18 && lastEpochCapUnder60k > 0 && _currentEpoch >= NUM_EPOCH_UNDER60k_TO_RESIGN.add(lastEpochCapUnder60k), "Forced resign is only allowed if the node has 60k for 10 consecutive days");
+        require(capacity < 60000 ether && lastEpochCapUnder60k > 0 && _currentEpoch >= NUM_EPOCH_UNDER60k_TO_RESIGN.add(lastEpochCapUnder60k), "Forced resign is only allowed if the node has 60k for 10 consecutive days");
         resignInternal();
     }
 
@@ -568,14 +565,19 @@ contract CandidateContract {
             address payable team = teamAddress();
 
             //send even _fee might be zero
-            team.transfer(_fee);
-            paymentHardwareHistory[epochToPay] = _fee;
-            emit PaymentHardware(epochToPay, getHardwareFeePercentage(), _fee);
+
+            if (_fee > 0) {
+                team.transfer(_fee);
+                paymentHardwareHistory[epochToPay] = _fee;
+                emit PaymentHardware(epochToPay, getHardwareFeePercentage(), _fee);
+            }
 
             uint256 _refBonus = getRefBonus(_reward);
-            referralAddress.transfer(_refBonus);
-            paymentReferralHistory[epochToPay] = _refBonus;
-            emit PaymentRef(epochToPay, getRefBonusPercentage(), _refBonus);
+            if (_refBonus > 0) {
+                referralAddress.transfer(_refBonus);
+                paymentReferralHistory[epochToPay] = _refBonus;
+                emit PaymentRef(epochToPay, getRefBonusPercentage(), _refBonus);
+            }
 
             EpochsReward[epochToPay].actualRewards = _reward.sub(_fee).sub(_refBonus);
             TotalRewardWithdrawn = TotalRewardWithdrawn.add(_fee).add(_refBonus);
