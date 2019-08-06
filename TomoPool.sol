@@ -509,6 +509,7 @@ contract CandidateContract {
 
     //this function is used for equally dividing rewards to missing epochs in which distributeRewards function is not called on time
     function fillRewardsPerEpoch() public {
+        require(candidateStatus >= PROPOSED_STATUS);
         uint256 _currentEpoch = currentEpoch();
         if (lastEpochRewardFilled == 0) {
             lastEpochRewardFilled = _currentEpoch.sub(3);
@@ -607,6 +608,7 @@ contract CandidateContract {
     }
 
     function computeTotalStakerReward(address _staker) public view returns (uint256) {
+        if (candidateStatus < PROPOSED_STATUS) return 0;
         uint256 lastWithdrawEpoch = getLastWithdrawEpochOfStaker(_staker);
         uint256 _ce = currentEpoch();
         uint256 _rewardAmount = 0;
@@ -619,6 +621,8 @@ contract CandidateContract {
 
     function computeStakerRewardByEpoch(address _staker, uint256 _epoch) public view returns (uint256, uint256) {
         uint256 _stakerCapacity = getStakerCapacityByEpoch(_epoch, _staker);
+    
+        if (candidateStatus < PROPOSED_STATUS) return (0, _stakerCapacity);
         uint256 _candidateCapacity = getCapacityByEpoch(_epoch);
         uint256 actualRewards = EpochsReward[_epoch].actualRewards;
         if (actualRewards == 0) {
