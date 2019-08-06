@@ -9,7 +9,7 @@ interface ICandidateManager {
 
 contract CandidateManager is Ownable, ICandidateManager {
     using SafeMath for uint256;
-    uint256 constant public BLOCK_PER_EPOCH = 90;
+    uint256 constant public BLOCK_PER_EPOCH = 900;
 
     constructor () public {
         team = msg.sender;
@@ -68,7 +68,7 @@ contract CandidateContract {
     string public CandidateName;
     address public coinbaseAddr;
 
-    uint256 constant public BLOCK_PER_EPOCH = 90;
+    uint256 constant public BLOCK_PER_EPOCH = 900;
     uint256 constant public PENDING_STATUS = 1;
     uint256 constant public PROPOSED_STATUS = 10;
     uint256 constant public RESIGNED_STATUS = 100;
@@ -76,8 +76,8 @@ contract CandidateContract {
     address payable public referralAddress;
     address payable public teamAddr;
 
-    uint256 public stakerWithdrawDelay = 1 * BLOCK_PER_EPOCH; //96 epochs = 2 days
-    uint256 public candidateWithdrawDelay = 3 * BLOCK_PER_EPOCH;//1440 epochs = 30 days
+    uint256 public stakerWithdrawDelay = 96 * BLOCK_PER_EPOCH; //96 epochs = 2 days
+    uint256 public candidateWithdrawDelay = 1440 * BLOCK_PER_EPOCH;//1440 epochs = 30 days
     uint256 public lastEpochRewardFilled; //the epoch at which rewards is filled/cached in EpochsReward
     uint256 public TotalRewardWithdrawn = 0;
     uint256 public TotalRewardEpochFilled = 0;
