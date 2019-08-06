@@ -9,7 +9,7 @@ interface ICandidateManager {
 
 contract CandidateManager is Ownable, ICandidateManager {
     using SafeMath for uint256;
-    uint256 constant public BLOCK_PER_EPOCH = 900;
+    uint256 constant public BLOCK_PER_EPOCH = 90;
 
     constructor () public {
         team = msg.sender;
@@ -37,14 +37,13 @@ contract CandidateManager is Ownable, ICandidateManager {
     }
 
     function newCandidate(string memory  _candidateName, address _coinbase) public onlyOwner {
-        CandidateContract _candidate = new CandidateContract(_candidateName, _coinbase, address(this));
+        CandidateContract _candidate = new CandidateContract(_candidateName, _coinbase, address(this), team);
         CandidatesState[address(_candidate)] = CandidateState({
             capacity: 0,
             isCandidate: true
             });
         candidates.push(address(_candidate));
         emit NewCandidate(address(_candidate), _candidateName, _coinbase);
-        _candidate.setTeam(team);
     }
 
     function changeTeamAddress(address payable _team) public onlyOwner {
@@ -69,7 +68,7 @@ contract CandidateContract {
     string public CandidateName;
     address public coinbaseAddr;
 
-    uint256 constant public BLOCK_PER_EPOCH = 900;
+    uint256 constant public BLOCK_PER_EPOCH = 90;
     uint256 constant public PENDING_STATUS = 1;
     uint256 constant public PROPOSED_STATUS = 10;
     uint256 constant public RESIGNED_STATUS = 100;
@@ -77,8 +76,8 @@ contract CandidateContract {
     address payable public referralAddress;
     address payable public teamAddr;
 
-    uint256 public stakerWithdrawDelay = 96 * BLOCK_PER_EPOCH; //96 epochs = 2 days
-    uint256 public candidateWithdrawDelay = 1440 * BLOCK_PER_EPOCH;//1440 epochs = 30 days
+    uint256 public stakerWithdrawDelay = 1 * BLOCK_PER_EPOCH; //96 epochs = 2 days
+    uint256 public candidateWithdrawDelay = 3 * BLOCK_PER_EPOCH;//1440 epochs = 30 days
     uint256 public lastEpochRewardFilled; //the epoch at which rewards is filled/cached in EpochsReward
     uint256 public TotalRewardWithdrawn = 0;
     uint256 public TotalRewardEpochFilled = 0;
@@ -159,7 +158,7 @@ contract CandidateContract {
     event WithdrawAfterResign(address _staker, bool _isStakeLocked, uint256 _withdrawalCap);
     event TransferStake(address _from, address _to, uint256 _amount);
 
-    constructor (string memory _candidateName, address _coinbase, address _cm) public {
+    constructor (string memory _candidateName, address _coinbase, address _cm, address payable _team) public {
         CandidateName = _candidateName;
         cm = _cm;
         coinbaseAddr = _coinbase;
@@ -167,7 +166,7 @@ contract CandidateContract {
         lastEpochRewardFilled = 0;
         governance.epochStart = currentEpoch();
         governance.description = "Voting for resigning";
-        teamAddr = msg.sender;
+        teamAddr = _team;
     }
 
     function setWithdrawDelay(uint256 _stake, uint256 _candidate) external onlyTeam {
