@@ -644,7 +644,8 @@ contract CandidateContract {
     function getLastWithdrawEpochOfStaker(address _staker) public view returns (uint256){
         uint256 lastWithdrawEpoch = StakerRewardWithdrawState[_staker];
         uint256 firstEpoch = EpochsAtWhichCapChange[_staker][0];
-        lastWithdrawEpoch = lastWithdrawEpoch > firstEpoch ? lastWithdrawEpoch : firstEpoch;
+        //if the staker has not been paid rewards before, the lastWithdrawEpoch should be the epoch it enters the pool - 1.
+        lastWithdrawEpoch = lastWithdrawEpoch > firstEpoch ? lastWithdrawEpoch : firstEpoch.sub(1);
         return lastWithdrawEpoch;
     }
 
